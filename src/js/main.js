@@ -5,7 +5,7 @@
 
 import { fetchProducts, fetchExchangeRates } from './apiService.js';
 import { convertAndFormat, calculateTotal } from './currencyLogic.js';
-import { Product, ProductCollection } from './Product.js';
+import { Product, ProductCollection } from './product.js';
 import {
     loadCurrency,
     saveCurrency,

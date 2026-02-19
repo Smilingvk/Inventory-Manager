@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Market Inventory Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Top Navigation Bar -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <h1 class="app-title">📦 Global Inventory Manager</h1>
+            <div class="nav-controls">
+                <div class="search-container">
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        placeholder="Search products..."
+                        class="search-input"
+                    >
+                    <span class="search-icon">🔍</span>
+                </div>
+                <div class="currency-selector">
+                    <label for="currencySelect">Currency:</label>
+                    <select id="currencySelect" class="currency-dropdown">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="JPY">JPY (¥)</option>
+                        <option value="MXN">MXN ($)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Left Sidebar - Category Filters -->
+        <aside class="sidebar-left">
+            <h2 class="sidebar-title">Categories</h2>
+            <div id="categoryFilters" class="category-list">
+                <button class="category-btn active" data-category="all">
+                    All Products
+                </button>
+                <!-- Categories will be dynamically populated -->
+            </div>
+            <div class="filter-info">
+                <p id="productCount" class="product-count">Loading...</p>
+            </div>
+        </aside>
+
+        <!-- Central Product Grid -->
+        <main class="product-grid-container">
+            <div id="loadingSpinner" class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading products...</p>
+            </div>
+            <div id="productGrid" class="product-grid">
+                <!-- Product cards will be dynamically inserted here -->
+            </div>
+            <div id="noResults" class="no-results" style="display: none;">
+                <p>No products found matching your criteria.</p>
+            </div>
+        </main>
+
+        <!-- Right Sidebar - Quote Summary -->
+        <aside class="sidebar-right">
+            <h2 class="sidebar-title">Current Quote</h2>
+            <div id="quoteList" class="quote-list">
+                <p class="empty-quote">No items in quote yet</p>
+            </div>
+            <div class="quote-summary">
+                <div class="quote-total">
+                    <span>Total:</span>
+                    <span id="quoteTotal" class="total-amount">$0.00</span>
+                </div>
+                <button id="clearQuoteBtn" class="btn-secondary" style="display: none;">
+                    Clear Quote
+                </button>
+                <button id="exportQuoteBtn" class="btn-primary" style="display: none;">
+                    Export Quote
+                </button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Floating Action Button for Mobile -->
+    <button id="quoteFAB" class="quote-fab">
+        <span class="fab-icon">📋</span>
+        <span id="quoteCount" class="quote-badge">0</span>
+    </button>
+
+    <!-- Product Detail Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div id="modalBody" class="modal-body">
+                <!-- Product details will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Quote Panel -->
+    <div id="mobileQuotePanel" class="mobile-quote-panel">
+        <div class="mobile-quote-header">
+            <h2>Current Quote</h2>
+            <button id="closeMobileQuote" class="close-panel-btn">&times;</button>
+        </div>
+        <div id="mobileQuoteList" class="quote-list">
+            <!-- Quote items will be duplicated here for mobile -->
+        </div>
+        <div class="quote-summary">
+            <div class="quote-total">
+                <span>Total:</span>
+                <span id="mobileQuoteTotal" class="total-amount">$0.00</span>
+            </div>
+            <button id="clearQuoteBtnMobile" class="btn-secondary">
+                Clear Quote
+            </button>
+            <button id="exportQuoteBtnMobile" class="btn-primary">
+                Export Quote
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

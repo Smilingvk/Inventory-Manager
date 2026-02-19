@@ -3,99 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Market Inventory Manager</title>
+    <meta name="description" content="Professional inventory management system with real-time multi-currency pricing for international markets. Browse products, create quotes, and export in multiple currencies.">
+    <meta name="keywords" content="inventory, global market, currency converter, export business, product catalog, quote generator">
+    <meta name="author" content="Global Inventory Manager">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Global Market Inventory Manager">
+    <meta property="og:description" content="Manage inventory with real-time multi-currency pricing">
+    <meta property="og:type" content="website">
+    
+    <title>Global Market Inventory Manager - Multi-Currency Product Catalog</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <!-- Top Navigation Bar -->
-    <nav class="top-nav">
-        <div class="nav-container">
-            <h1 class="app-title">📦 Global Inventory Manager</h1>
-            <div class="nav-controls">
-                <div class="search-container">
-                    <input 
-                        type="text" 
-                        id="searchInput" 
-                        placeholder="Search products..."
-                        class="search-input"
-                    >
-                    <span class="search-icon">🔍</span>
-                </div>
-                <div class="currency-selector">
-                    <label for="currencySelect">Currency:</label>
-                    <select id="currencySelect" class="currency-dropdown">
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                        <option value="GBP">GBP (£)</option>
-                        <option value="JPY">JPY (¥)</option>
-                        <option value="MXN">MXN ($)</option>
-                    </select>
+    <header role="banner">
+        <nav class="top-nav" role="navigation" aria-label="Main navigation">
+            <div class="nav-container">
+                <h1 class="app-title">📦 Global Inventory Manager</h1>
+                <div class="nav-controls">
+                    <div class="search-container">
+                        <label for="searchInput" class="visually-hidden">Search products</label>
+                        <input 
+                            type="search" 
+                            id="searchInput" 
+                            placeholder="Search products..."
+                            class="search-input"
+                            aria-label="Search products by name, category, or description"
+                        >
+                        <span class="search-icon" aria-hidden="true">🔍</span>
+                    </div>
+                    <div class="currency-selector">
+                        <label for="currencySelect">Currency:</label>
+                        <select id="currencySelect" class="currency-dropdown" aria-label="Select currency for pricing">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="MXN">MXN ($)</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </header>
 
     <!-- Main Dashboard Container -->
-    <div class="dashboard-container">
+    <main role="main" class="dashboard-container">
         <!-- Left Sidebar - Category Filters -->
-        <aside class="sidebar-left">
+        <aside class="sidebar-left" role="complementary" aria-label="Category filters">
             <h2 class="sidebar-title">Categories</h2>
-            <div id="categoryFilters" class="category-list">
-                <button class="category-btn active" data-category="all">
+            <nav id="categoryFilters" class="category-list" role="navigation" aria-label="Product categories">
+                <button class="category-btn active" data-category="all" aria-pressed="true">
                     All Products
                 </button>
                 <!-- Categories will be dynamically populated -->
-            </div>
+            </nav>
             <div class="filter-info">
-                <p id="productCount" class="product-count">Loading...</p>
+                <p id="productCount" class="product-count" aria-live="polite">Loading...</p>
             </div>
         </aside>
 
         <!-- Central Product Grid -->
-        <main class="product-grid-container">
-            <div id="loadingSpinner" class="loading-spinner">
-                <div class="spinner"></div>
+        <section class="product-grid-container" aria-label="Product catalog">
+            <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite">
+                <div class="spinner" aria-hidden="true"></div>
                 <p>Loading products...</p>
             </div>
-            <div id="productGrid" class="product-grid">
+            <div id="productGrid" class="product-grid" role="list">
                 <!-- Product cards will be dynamically inserted here -->
             </div>
-            <div id="noResults" class="no-results" style="display: none;">
+            <div id="noResults" class="no-results" style="display: none;" role="status">
                 <p>No products found matching your criteria.</p>
             </div>
-        </main>
+        </section>
 
         <!-- Right Sidebar - Quote Summary -->
-        <aside class="sidebar-right">
+        <aside class="sidebar-right" role="complementary" aria-label="Current quote summary">
             <h2 class="sidebar-title">Current Quote</h2>
-            <div id="quoteList" class="quote-list">
+            <div id="quoteList" class="quote-list" role="list">
                 <p class="empty-quote">No items in quote yet</p>
             </div>
             <div class="quote-summary">
                 <div class="quote-total">
                     <span>Total:</span>
-                    <span id="quoteTotal" class="total-amount">$0.00</span>
+                    <span id="quoteTotal" class="total-amount" aria-live="polite">$0.00</span>
                 </div>
-                <button id="clearQuoteBtn" class="btn-secondary" style="display: none;">
+                <button id="clearQuoteBtn" class="btn-secondary" style="display: none;" aria-label="Clear all items from quote">
                     Clear Quote
                 </button>
-                <button id="exportQuoteBtn" class="btn-primary" style="display: none;">
+                <button id="exportQuoteBtn" class="btn-primary" style="display: none;" aria-label="Export quote as JSON file">
                     Export Quote
                 </button>
             </div>
         </aside>
-    </div>
+    </main>
 
     <!-- Floating Action Button for Mobile -->
-    <button id="quoteFAB" class="quote-fab">
-        <span class="fab-icon">📋</span>
-        <span id="quoteCount" class="quote-badge">0</span>
+    <button id="quoteFAB" class="quote-fab" aria-label="View quote summary">
+        <span class="fab-icon" aria-hidden="true">📋</span>
+        <span id="quoteCount" class="quote-badge" aria-label="Items in quote">0</span>
     </button>
 
     <!-- Product Detail Modal -->
-    <div id="productModal" class="modal">
+    <div id="productModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalProductTitle">
         <div class="modal-content">
-            <button class="modal-close">&times;</button>
+            <button class="modal-close" aria-label="Close product details">&times;</button>
             <div id="modalBody" class="modal-body">
                 <!-- Product details will be injected here -->
             </div>
@@ -103,27 +117,32 @@
     </div>
 
     <!-- Mobile Quote Panel -->
-    <div id="mobileQuotePanel" class="mobile-quote-panel">
+    <div id="mobileQuotePanel" class="mobile-quote-panel" role="dialog" aria-modal="true" aria-labelledby="mobileQuoteTitle">
         <div class="mobile-quote-header">
-            <h2>Current Quote</h2>
-            <button id="closeMobileQuote" class="close-panel-btn">&times;</button>
+            <h2 id="mobileQuoteTitle">Current Quote</h2>
+            <button id="closeMobileQuote" class="close-panel-btn" aria-label="Close quote panel">&times;</button>
         </div>
-        <div id="mobileQuoteList" class="quote-list">
+        <div id="mobileQuoteList" class="quote-list" role="list">
             <!-- Quote items will be duplicated here for mobile -->
         </div>
         <div class="quote-summary">
             <div class="quote-total">
                 <span>Total:</span>
-                <span id="mobileQuoteTotal" class="total-amount">$0.00</span>
+                <span id="mobileQuoteTotal" class="total-amount" aria-live="polite">$0.00</span>
             </div>
-            <button id="clearQuoteBtnMobile" class="btn-secondary">
+            <button id="clearQuoteBtnMobile" class="btn-secondary" aria-label="Clear all items from quote">
                 Clear Quote
             </button>
-            <button id="exportQuoteBtnMobile" class="btn-primary">
+            <button id="exportQuoteBtnMobile" class="btn-primary" aria-label="Export quote as JSON file">
                 Export Quote
             </button>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer role="contentinfo" class="app-footer">
+        <p>&copy; 2026 Global Inventory Manager. Educational project using <a href="https://fakestoreapi.com/" target="_blank" rel="noopener noreferrer">FakeStore API</a> and <a href="https://www.exchangerate-api.com/" target="_blank" rel="noopener noreferrer">ExchangeRate API</a>.</p>
+    </footer>
 
     <!-- Scripts -->
     <script type="module" src="js/main.js"></script>

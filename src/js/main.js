@@ -5,20 +5,20 @@
 
 import { fetchProducts, fetchExchangeRates } from './apiService.js';
 import { convertAndFormat, calculateTotal } from './currencyLogic.js';
-import { 
-    loadCurrency, 
-    saveCurrency, 
-    loadQuoteList, 
-    addToQuote, 
-    removeFromQuote, 
+import { Product, ProductCollection } from './Product.js';
+import {
+    loadCurrency,
+    saveCurrency,
+    loadQuoteList,
+    addToQuote,
+    removeFromQuote,
     clearQuote,
-    exportQuoteData,
-    getQuoteCount
+    exportQuoteData
 } from './storage.js';
-import { 
-    applyFilters, 
-    extractCategories, 
-    debounce 
+import {
+    applyFilters,
+    extractCategories,
+    debounce
 } from './filterService.js';
 import {
     renderProducts,
@@ -37,6 +37,7 @@ import {
 
 // Application State
 const state = {
+    productCollection: null,
     allProducts: [],
     filteredProducts: [],
     exchangeRates: {},
@@ -54,35 +55,38 @@ const state = {
 async function init() {
     try {
         showLoading();
-        
+
         // Load saved preferences
         state.currentCurrency = loadCurrency();
         state.quoteList = loadQuoteList();
-        
+
         // Set currency dropdown to saved value
         const currencySelect = document.getElementById('currencySelect');
         currencySelect.value = state.currentCurrency;
-        
+
         // Fetch data from APIs
-        const [products, exchangeRates] = await Promise.all([
+        const [productsData, exchangeRates] = await Promise.all([
             fetchProducts(),
             fetchExchangeRates()
         ]);
-        
+
+        // Create Product instances
+        const products = productsData.map(p => new Product(p));
+        state.productCollection = new ProductCollection(products);
         state.allProducts = products;
         state.filteredProducts = products;
         state.exchangeRates = exchangeRates;
-        
+
         // Render initial UI
         renderUI();
-        
+
         // Setup event listeners
         setupEventListeners();
-        
+
         hideLoading();
-        
+
         console.log('App initialized successfully');
-        
+
     } catch (error) {
         console.error('Initialization error:', error);
         hideLoading();

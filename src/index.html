@@ -3,148 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Professional inventory management system with real-time multi-currency pricing for international markets. Browse products, create quotes, and export in multiple currencies.">
-    <meta name="keywords" content="inventory, global market, currency converter, export business, product catalog, quote generator">
-    <meta name="author" content="Global Inventory Manager">
-    <meta name="theme-color" content="#2563eb">
-    
-    <!-- Open Graph / Social Media -->
-    <meta property="og:title" content="Global Market Inventory Manager">
-    <meta property="og:description" content="Manage inventory with real-time multi-currency pricing">
+    <meta name="description" content="Browse a product catalog, compare prices across currencies, and prepare an exportable quote.">
+    <meta name="theme-color" content="#142b35">
+    <meta property="og:title" content="Inventory | Global Inventory">
+    <meta property="og:description" content="Browse products and prepare quotes in multiple currencies.">
     <meta property="og:type" content="website">
-    
-    <title>Global Market Inventory Manager - Multi-Currency Product Catalog</title>
+    <title>Inventory | Global Inventory</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Top Navigation Bar -->
-    <header role="banner">
-        <nav class="top-nav" role="navigation" aria-label="Main navigation">
-            <div class="nav-container">
-                <h1 class="app-title">📦 Global Inventory Manager</h1>
-                <div class="nav-controls">
-                    <div class="search-container">
-                        <label for="searchInput" class="visually-hidden">Search products</label>
-                        <input 
-                            type="search" 
-                            id="searchInput" 
-                            placeholder="Search products..."
-                            class="search-input"
-                            aria-label="Search products by name, category, or description"
-                        >
-                        <span class="search-icon" aria-hidden="true">🔍</span>
-                    </div>
-                    <div class="currency-selector">
-                        <label for="currencySelect">Currency:</label>
-                        <select id="currencySelect" class="currency-dropdown" aria-label="Select currency for pricing">
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                            <option value="JPY">JPY (¥)</option>
-                            <option value="MXN">MXN ($)</option>
-                        </select>
+    <a class="skip-link" href="#mainContent">Skip to content</a>
+    <header class="app-header">
+        <div class="header-inner">
+            <a class="brand" href="#mainContent" aria-label="Global Inventory, inicio">
+                <span class="brand-mark" aria-hidden="true">GI</span>
+                <span class="brand-name">Global<span>Inventory</span></span>
+            </a>
+            <div class="header-context">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span>Product catalog</span>
+            </div>
+            <div class="header-controls">
+                <div class="currency-control" id="currencyPicker">
+                    <span class="currency-label">Currency</span>
+                    <button id="currencyTrigger" class="currency-trigger" type="button"
+                        aria-haspopup="menu" aria-expanded="false" aria-controls="currencyMenu" aria-label="Choose currency">
+                        <span class="currency-globe" aria-hidden="true">$</span>
+                        <span class="currency-current">
+                            <span id="currencyCode">USD</span>
+                            <span id="currencyName">US Dollar</span>
+                        </span>
+                        <svg class="currency-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+                    </button>
+                    <div id="currencyMenu" class="currency-menu" role="menu" aria-label="Choose display currency" hidden>
+                        <p class="currency-menu-heading">DISPLAY CURRENCY</p>
+                        <button class="currency-option" type="button" role="menuitemradio" data-currency="USD" data-name="US Dollar" data-flag="🇺🇸" aria-checked="true">
+                            <span class="currency-flag" aria-hidden="true">🇺🇸</span><span class="currency-option-copy"><strong>US Dollar</strong><small>USD · United States</small></span><span class="currency-check" aria-hidden="true">✓</span>
+                        </button>
+                        <button class="currency-option" type="button" role="menuitemradio" data-currency="EUR" data-name="Euro" data-flag="🇪🇺" aria-checked="false">
+                            <span class="currency-flag" aria-hidden="true">🇪🇺</span><span class="currency-option-copy"><strong>Euro</strong><small>EUR · European Union</small></span><span class="currency-check" aria-hidden="true">✓</span>
+                        </button>
+                        <button class="currency-option" type="button" role="menuitemradio" data-currency="GBP" data-name="British Pound" data-flag="🇬🇧" aria-checked="false">
+                            <span class="currency-flag" aria-hidden="true">🇬🇧</span><span class="currency-option-copy"><strong>British Pound</strong><small>GBP · United Kingdom</small></span><span class="currency-check" aria-hidden="true">✓</span>
+                        </button>
+                        <button class="currency-option" type="button" role="menuitemradio" data-currency="JPY" data-name="Japanese Yen" data-flag="🇯🇵" aria-checked="false">
+                            <span class="currency-flag" aria-hidden="true">🇯🇵</span><span class="currency-option-copy"><strong>Japanese Yen</strong><small>JPY · Japan</small></span><span class="currency-check" aria-hidden="true">✓</span>
+                        </button>
+                        <button class="currency-option" type="button" role="menuitemradio" data-currency="MXN" data-name="Mexican Peso" data-flag="🇲🇽" aria-checked="false">
+                            <span class="currency-flag" aria-hidden="true">🇲🇽</span><span class="currency-option-copy"><strong>Mexican Peso</strong><small>MXN · Mexico</small></span><span class="currency-check" aria-hidden="true">✓</span>
+                        </button>
                     </div>
                 </div>
             </div>
-        </nav>
+        </div>
     </header>
 
-    <!-- Main Dashboard Container -->
-    <main role="main" class="dashboard-container">
-        <!-- Left Sidebar - Category Filters -->
-        <aside class="sidebar-left" role="complementary" aria-label="Category filters">
-            <h2 class="sidebar-title">Categories</h2>
-            <nav id="categoryFilters" class="category-list" role="navigation" aria-label="Product categories">
-                <button class="category-btn active" data-category="all" aria-pressed="true">
-                    All Products
-                </button>
-                <!-- Categories will be dynamically populated -->
-            </nav>
-            <div class="filter-info">
-                <p id="productCount" class="product-count" aria-live="polite">Loading...</p>
+    <main id="mainContent" class="page-shell">
+        <section class="page-heading" aria-labelledby="pageTitle">
+            <div class="hero-copy">
+                <p class="eyebrow">GLOBAL INVENTORY / CATALOG</p>
+                <h1 id="pageTitle">Your entire catalog,<br><em>all in one place.</em></h1>
+                <p class="page-description">Find what you need, compare prices, and prepare your next quote with confidence.</p>
+                <a class="hero-link" href="#catalogTitle">Explore products <span aria-hidden="true">↗</span></a>
             </div>
-        </aside>
-
-        <!-- Central Product Grid -->
-        <section class="product-grid-container" aria-label="Product catalog">
-            <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite">
-                <div class="spinner" aria-hidden="true"></div>
-                <p>Loading products...</p>
-            </div>
-            <div id="productGrid" class="product-grid" role="list">
-                <!-- Product cards will be dynamically inserted here -->
-            </div>
-            <div id="noResults" class="no-results" style="display: none;" role="status">
-                <p>No products found matching your criteria.</p>
+            <div class="hero-aside" aria-hidden="true">
+                <span class="hero-aside-top">GLOBAL CATALOG</span>
+                <span class="hero-aside-symbol">G<span>·</span>I</span>
+                <span class="hero-aside-bottom">PRODUCTS · CURRENCIES · QUOTES</span>
             </div>
         </section>
 
-        <!-- Right Sidebar - Quote Summary -->
-        <aside class="sidebar-right" role="complementary" aria-label="Current quote summary">
-            <h2 class="sidebar-title">Current Quote</h2>
-            <div id="quoteList" class="quote-list" role="list">
-                <p class="empty-quote">No items in quote yet</p>
-            </div>
-            <div class="quote-summary">
-                <div class="quote-total">
-                    <span>Total:</span>
-                    <span id="quoteTotal" class="total-amount" aria-live="polite">$0.00</span>
+        <section class="metrics" aria-label="Catalog summary">
+            <div class="metric-card"><span class="metric-icon" aria-hidden="true">◫</span><div><span class="metric-label">Products</span><strong id="metricProducts">—</strong></div></div>
+            <div class="metric-card"><span class="metric-icon" aria-hidden="true">▦</span><div><span class="metric-label">Categories</span><strong id="metricCategories">—</strong></div></div>
+            <div class="metric-card"><span class="metric-icon" aria-hidden="true">▤</span><div><span class="metric-label">Quoted units</span><strong id="metricQuote">0</strong></div></div>
+            <div class="metric-card metric-accent"><span class="metric-icon" aria-hidden="true">↗</span><div><span class="metric-label">Quote value</span><strong id="metricQuoteValue">—</strong></div></div>
+        </section>
+
+        <div id="rateNotice" class="rate-notice" role="status" hidden>
+            Exchange rates could not be refreshed. Reference rates are being used.
+        </div>
+
+        <div class="workspace">
+            <aside class="filter-panel panel" aria-labelledby="filtersTitle">
+                <div class="panel-heading">
+                    <div>
+                        <p class="eyebrow">REFINE</p>
+                        <h2 id="filtersTitle">Filters</h2>
+                    </div>
+                    <button id="filterToggle" class="filter-toggle" type="button" aria-controls="filterContent" aria-expanded="false">
+                        <span class="filter-toggle-label">Show filters</span><span aria-hidden="true">⌄</span>
+                    </button>
                 </div>
-                <button id="clearQuoteBtn" class="btn-secondary" style="display: none;" aria-label="Clear all items from quote">
-                    Clear Quote
-                </button>
-                <button id="exportQuoteBtn" class="btn-primary" style="display: none;" aria-label="Export quote as JSON file">
-                    Export Quote
-                </button>
-            </div>
-        </aside>
+                <div id="filterContent" class="filter-content">
+                <label class="field-label" for="searchInput">Search products</label>
+                <div class="search-field">
+                    <span aria-hidden="true">⌕</span>
+                    <input type="search" id="searchInput" placeholder="Name, category…" autocomplete="off">
+                </div>
+                <div class="filter-section">
+                    <h3 class="field-label">Categories</h3>
+                    <div id="categoryFilters" class="category-list" role="group" aria-label="Filter by category"></div>
+                </div>
+                <button id="clearFiltersBtn" class="clear-filters" type="button" hidden>Clear filters <span aria-hidden="true">×</span></button>
+                <p class="filter-footnote">Browse, select, and quote in a few steps.</p>
+                </div>
+            </aside>
+
+            <section class="catalog-panel" aria-labelledby="catalogTitle">
+                <div class="catalog-toolbar">
+                    <div>
+                        <h2 id="catalogTitle">All products</h2>
+                        <p class="toolbar-subtitle">Prices shown in your selected currency</p>
+                        <p id="productCount" class="catalog-count" aria-live="polite">Loading…</p>
+                    </div>
+                    <label class="sort-control" for="sortSelect">
+                        <span>Sort by</span>
+                        <select id="sortSelect">
+                            <option value="featured">Featured</option>
+                            <option value="price-asc">Price: low to high</option>
+                            <option value="price-desc">Price: high to low</option>
+                            <option value="name-asc">Name: A–Z</option>
+                            <option value="rating-desc">Top rated</option>
+                        </select>
+                    </label>
+                </div>
+                <div id="activeFilters" class="active-filters" aria-label="Active filters" hidden></div>
+                <div id="loadingSpinner" class="loading-state" role="status" aria-live="polite">
+                    <span class="visually-hidden">Loading catalog…</span>
+                    <span class="skeleton-card" aria-hidden="true"></span>
+                    <span class="skeleton-card" aria-hidden="true"></span>
+                    <span class="skeleton-card" aria-hidden="true"></span>
+                </div>
+                <div id="productGrid" class="product-grid" role="list" aria-label="Products"></div>
+                <div id="noResults" class="empty-state" role="status" hidden>
+                    <span class="empty-icon" aria-hidden="true">⌕</span>
+                    <h3>No products found</h3>
+                    <p>Try another search or choose a different category.</p>
+                </div>
+            </section>
+
+            <aside class="quote-panel panel" aria-labelledby="quoteTitle">
+                <div class="panel-heading quote-heading">
+                    <div>
+                        <p class="eyebrow">CURRENT SELECTION</p>
+                        <h2 id="quoteTitle">Quote</h2>
+                    </div>
+                    <span class="quote-icon" aria-hidden="true">▤</span>
+                </div>
+                <div id="quoteList" class="quote-list" role="list" aria-label="Quoted products"></div>
+                <div class="quote-summary">
+                    <div class="quote-total">
+                        <span>Estimated total</span>
+                        <strong id="quoteTotal" aria-live="polite">US$ 0.00</strong>
+                    </div>
+                    <p class="quote-disclaimer">Reference pricing. Taxes and shipping are not included.</p>
+                    <button id="clearQuoteBtn" class="btn-secondary" type="button" hidden>Clear quote</button>
+                    <button id="exportQuoteBtn" class="btn-primary" type="button" hidden>Export quote <span aria-hidden="true">↓</span></button>
+                </div>
+            </aside>
+        </div>
     </main>
 
-    <!-- Floating Action Button for Mobile -->
-    <button id="quoteFAB" class="quote-fab" aria-label="View quote summary">
-        <span class="fab-icon" aria-hidden="true">📋</span>
-        <span id="quoteCount" class="quote-badge" aria-label="Items in quote">0</span>
+    <button id="quotePanelBackdrop" class="quote-backdrop" type="button" aria-label="Close quote" hidden></button>
+    <button id="quoteFAB" class="quote-fab" type="button" aria-label="View quote, 0 products"
+        aria-controls="mobileQuotePanel" aria-expanded="false">
+        <span aria-hidden="true">▤</span>
+        <span id="quoteCount" class="quote-badge" aria-hidden="true">0</span>
     </button>
 
-    <!-- Product Detail Modal -->
-    <div id="productModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalProductTitle">
+    <div id="productModal" class="modal" role="dialog" aria-modal="false" aria-labelledby="modalProductTitle">
         <div class="modal-content">
-            <button class="modal-close" aria-label="Close product details">&times;</button>
-            <div id="modalBody" class="modal-body">
-                <!-- Product details will be injected here -->
-            </div>
+            <button class="modal-close" type="button" aria-label="Close details">×</button>
+            <div id="modalBody" class="modal-body"></div>
         </div>
     </div>
 
-    <!-- Mobile Quote Panel -->
-    <div id="mobileQuotePanel" class="mobile-quote-panel" role="dialog" aria-modal="true" aria-labelledby="mobileQuoteTitle">
+    <section id="mobileQuotePanel" class="mobile-quote-panel" role="dialog" aria-modal="false"
+        aria-hidden="true" aria-labelledby="mobileQuoteTitle" hidden>
         <div class="mobile-quote-header">
-            <h2 id="mobileQuoteTitle">Current Quote</h2>
-            <button id="closeMobileQuote" class="close-panel-btn" aria-label="Close quote panel">&times;</button>
+            <div>
+                <p class="eyebrow">CURRENT SELECTION</p>
+                <h2 id="mobileQuoteTitle">Quote</h2>
+            </div>
+            <button id="closeMobileQuote" class="close-panel-btn" type="button" aria-label="Close quote">×</button>
         </div>
-        <div id="mobileQuoteList" class="quote-list" role="list">
-            <!-- Quote items will be duplicated here for mobile -->
-        </div>
+        <div id="mobileQuoteList" class="quote-list" role="list" aria-label="Quoted products"></div>
         <div class="quote-summary">
             <div class="quote-total">
-                <span>Total:</span>
-                <span id="mobileQuoteTotal" class="total-amount" aria-live="polite">$0.00</span>
+                <span>Estimated total</span>
+                <strong id="mobileQuoteTotal" aria-live="polite">US$ 0.00</strong>
             </div>
-            <button id="clearQuoteBtnMobile" class="btn-secondary" aria-label="Clear all items from quote">
-                Clear Quote
-            </button>
-            <button id="exportQuoteBtnMobile" class="btn-primary" aria-label="Export quote as JSON file">
-                Export Quote
-            </button>
+            <p class="quote-disclaimer">Reference pricing. Taxes and shipping are not included.</p>
+            <button id="clearQuoteBtnMobile" class="btn-secondary" type="button" hidden>Clear quote</button>
+            <button id="exportQuoteBtnMobile" class="btn-primary" type="button" hidden>Export quote <span aria-hidden="true">↓</span></button>
         </div>
-    </div>
+    </section>
 
-    <!-- Footer -->
-    <footer role="contentinfo" class="app-footer">
-        <p>&copy; 2026 Global Inventory Manager. Educational project using <a href="https://fakestoreapi.com/" target="_blank" rel="noopener noreferrer">FakeStore API</a> and <a href="https://www.exchangerate-api.com/" target="_blank" rel="noopener noreferrer">ExchangeRate API</a>.</p>
+    <div id="toastRegion" class="toast-region" role="status" aria-live="polite" hidden></div>
+
+    <footer class="app-footer">
+        <span>Global Inventory · Demo application</span>
+        <span>Catalog by <a href="https://fakestoreapi.com/" target="_blank" rel="noopener noreferrer">FakeStore API</a> · Rates by <a href="https://www.exchangerate-api.com/" target="_blank" rel="noopener noreferrer">ExchangeRate API</a></span>
     </footer>
-
-    <!-- Scripts -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>

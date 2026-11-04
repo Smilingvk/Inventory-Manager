@@ -1,25 +1,17 @@
-/**
- * Main Application Module
- * Initializes app, coordinates event listeners, and manages state
- */
-
 import { fetchProducts, fetchExchangeRates } from './apiService.js';
-import { convertAndFormat, calculateTotal } from './currencyLogic.js';
-import { Product, ProductCollection } from './product.js';
+import { calculateTotal } from './currencyLogic.js';
+import { Product } from './product.js';
 import {
     loadCurrency,
     saveCurrency,
     loadQuoteList,
     addToQuote,
+    setQuoteQuantity,
     removeFromQuote,
     clearQuote,
     exportQuoteData
 } from './storage.js';
-import {
-    applyFilters,
-    extractCategories,
-    debounce
-} from './filterService.js';
+import { applyFilters, extractCategories, formatCategory, sortProducts, debounce } from './filterService.js';
 import {
     renderProducts,
     renderCategoryFilters,
@@ -32,396 +24,360 @@ import {
     showLoading,
     hideLoading,
     showError,
-    updateProductCardButtons
+    updateProductCardButtons,
+    updateCurrencyPicker
 } from './inventoryRenderer.js';
 
-// Application State
 const state = {
-    productCollection: null,
     allProducts: [],
     filteredProducts: [],
     exchangeRates: {},
+    usingFallbackRates: false,
     currentCurrency: 'USD',
-    filters: {
-        search: '',
-        category: 'all'
-    },
+    sortBy: 'featured',
+    filters: { search: '', category: 'all' },
     quoteList: []
 };
 
-/**
- * Initialize the application
- */
+let notificationTimeout;
+
 async function init() {
+    showLoading();
+    state.currentCurrency = loadCurrency();
+    state.quoteList = loadQuoteList();
+    updateCurrencyPicker(state.currentCurrency);
+
     try {
-        showLoading();
-
-        // Load saved preferences
-        state.currentCurrency = loadCurrency();
-        state.quoteList = loadQuoteList();
-
-        // Set currency dropdown to saved value
-        const currencySelect = document.getElementById('currencySelect');
-        currencySelect.value = state.currentCurrency;
-
-        // Fetch data from APIs
-        const [productsData, exchangeRates] = await Promise.all([
-            fetchProducts(),
-            fetchExchangeRates()
-        ]);
-
-        // Create Product instances
-        const products = productsData.map(p => new Product(p));
-        state.productCollection = new ProductCollection(products);
-        state.allProducts = products;
-        state.filteredProducts = products;
-        state.exchangeRates = exchangeRates;
-
-        // Render initial UI
+        const [productsData, rateResult] = await Promise.all([fetchProducts(), fetchExchangeRates()]);
+        state.allProducts = productsData.map(data => new Product(data)).filter(product => product.isValid());
+        state.filteredProducts = state.allProducts;
+        state.exchangeRates = rateResult.rates;
+        state.usingFallbackRates = rateResult.isFallback;
         renderUI();
-
-        // Setup event listeners
-        setupEventListeners();
-
+        bindEvents();
         hideLoading();
-
-        console.log('App initialized successfully');
-
+        document.getElementById('rateNotice').hidden = !state.usingFallbackRates;
     } catch (error) {
-        console.error('Initialization error:', error);
         hideLoading();
-        showError(error.message || 'Failed to load application. Please refresh the page.');
+        showError(error.message || 'An unexpected error occurred while starting the app.', init);
     }
 }
 
-/**
- * Render the entire UI
- */
 function renderUI() {
-    // Render products
-    renderProducts(
-        state.filteredProducts,
-        state.currentCurrency,
-        state.exchangeRates,
-        handleAddToQuote,
-        handleProductClick
-    );
-    
-    // Render category filters
-    const categories = extractCategories(state.allProducts);
-    renderCategoryFilters(
-        categories,
-        state.filters.category,
-        handleCategoryClick
-    );
-    
-    // Update product count
+    const visibleProducts = sortProducts(state.filteredProducts, state.sortBy);
+    renderProducts(visibleProducts, state.currentCurrency, state.exchangeRates,
+        handleAddToQuote, handleProductClick, state.quoteList);
+    renderCategoryFilters(extractCategories(state.allProducts), state.filters.category);
+    updateCatalogHeading();
     updateProductCount(state.filteredProducts.length, state.allProducts.length);
-    
-    // Render quote list
-    renderQuoteList(
-        state.quoteList,
-        state.currentCurrency,
-        state.exchangeRates,
-        handleRemoveFromQuote
-    );
-    
-    // Update quote total
-    const total = calculateTotal(
-        state.quoteList,
-        state.currentCurrency,
-        state.exchangeRates
-    );
-    updateQuoteTotal(total, state.currentCurrency);
-    
-    // Update quote badge
+    renderQuoteList(state.quoteList, state.currentCurrency, state.exchangeRates,
+        handleRemoveFromQuote, handleQuantityChange);
+    updateQuoteTotal(calculateTotal(state.quoteList, state.currentCurrency, state.exchangeRates), state.currentCurrency);
     updateQuoteBadge(state.quoteList.length);
+    updateMetrics();
+    renderActiveFilters();
 }
 
-/**
- * Setup all event listeners
- */
-function setupEventListeners() {
-    // Currency selector
-    const currencySelect = document.getElementById('currencySelect');
-    currencySelect.addEventListener('change', handleCurrencyChange);
-    
-    // Search input with debounce
-    const searchInput = document.getElementById('searchInput');
-    const debouncedSearch = debounce(handleSearchInput, 300);
-    searchInput.addEventListener('input', debouncedSearch);
-    
-    // Category filters (handled in renderCategoryFilters)
-    const categoryButtons = document.querySelectorAll('.category-btn');
-    categoryButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            handleCategoryClick(button.dataset.category);
-        });
+function bindEvents() {
+    const currencyPicker = document.getElementById('currencyPicker');
+    const currencyTrigger = document.getElementById('currencyTrigger');
+    const currencyMenu = document.getElementById('currencyMenu');
+    currencyTrigger.addEventListener('click', () => {
+        const isOpen = currencyTrigger.getAttribute('aria-expanded') === 'true';
+        setCurrencyMenuOpen(!isOpen);
+        if (!isOpen) currencyMenu.querySelector('[aria-checked="true"]')?.focus();
     });
-    
-    // Clear quote button
-    const clearQuoteBtn = document.getElementById('clearQuoteBtn');
-    const clearQuoteBtnMobile = document.getElementById('clearQuoteBtnMobile');
-    clearQuoteBtn?.addEventListener('click', handleClearQuote);
-    clearQuoteBtnMobile?.addEventListener('click', handleClearQuote);
-    
-    // Export quote button
-    const exportQuoteBtn = document.getElementById('exportQuoteBtn');
-    const exportQuoteBtnMobile = document.getElementById('exportQuoteBtnMobile');
-    exportQuoteBtn?.addEventListener('click', handleExportQuote);
-    exportQuoteBtnMobile?.addEventListener('click', handleExportQuote);
-    
-    // Modal close button
-    const modalClose = document.querySelector('.modal-close');
-    modalClose?.addEventListener('click', hideProductModal);
-    
-    // Close modal when clicking outside
-    const modal = document.getElementById('productModal');
-    modal?.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            hideProductModal();
+    currencyMenu.addEventListener('click', event => {
+        const option = event.target.closest('[data-currency]');
+        if (!option) return;
+        state.currentCurrency = option.dataset.currency;
+        saveCurrency(state.currentCurrency);
+        updateCurrencyPicker(state.currentCurrency);
+        setCurrencyMenuOpen(false);
+        currencyTrigger.focus();
+        renderUI();
+    });
+    currencyTrigger.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        setCurrencyMenuOpen(true);
+        currencyMenu.querySelector('[aria-checked="true"]')?.focus();
+    });
+    currencyMenu.addEventListener('keydown', handleCurrencyMenuKeys);
+    document.addEventListener('click', event => {
+        if (!currencyPicker.contains(event.target)) setCurrencyMenuOpen(false);
+    });
+
+    document.getElementById('searchInput').addEventListener('input', debounce(event => {
+        state.filters.search = event.target.value;
+        applyFiltersAndRender();
+    }));
+
+    document.getElementById('sortSelect').addEventListener('change', event => {
+        state.sortBy = event.target.value;
+        renderUI();
+    });
+    document.getElementById('filterToggle').addEventListener('click', () => {
+        const content = document.getElementById('filterContent');
+        const open = content.classList.toggle('is-open');
+        document.getElementById('filterToggle').setAttribute('aria-expanded', String(open));
+        document.querySelector('.filter-toggle-label').textContent = open ? 'Hide filters' : 'Show filters';
+    });
+
+    document.getElementById('categoryFilters').addEventListener('click', event => {
+        const button = event.target.closest('.category-btn');
+        if (!button) return;
+        state.filters.category = button.dataset.category;
+        renderCategoryFilters(extractCategories(state.allProducts), state.filters.category);
+        applyFiltersAndRender();
+    });
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+    document.getElementById('activeFilters').addEventListener('click', event => {
+        const chip = event.target.closest('[data-clear-filter]');
+        if (!chip) return;
+        if (chip.dataset.clearFilter === 'search') {
+            state.filters.search = '';
+            document.getElementById('searchInput').value = '';
+        } else {
+            state.filters.category = 'all';
+            renderCategoryFilters(extractCategories(state.allProducts), 'all');
         }
+        applyFiltersAndRender();
     });
-    
-    // Mobile quote FAB
-    const quoteFAB = document.getElementById('quoteFAB');
-    quoteFAB?.addEventListener('click', toggleMobileQuotePanel);
-    
-    // Close mobile quote panel
-    const closeMobileQuote = document.getElementById('closeMobileQuote');
-    closeMobileQuote?.addEventListener('click', () => {
-        const panel = document.getElementById('mobileQuotePanel');
-        panel.classList.remove('active');
+
+    ['clearQuoteBtn', 'clearQuoteBtnMobile'].forEach(id => {
+        document.getElementById(id).addEventListener('click', handleClearQuote);
     });
-}
-
-/**
- * Handle currency change
- */
-function handleCurrencyChange(event) {
-    state.currentCurrency = event.target.value;
-    saveCurrency(state.currentCurrency);
-    
-    // Re-render products and quote with new currency
-    renderUI();
-}
-
-/**
- * Handle search input
- */
-function handleSearchInput(event) {
-    state.filters.search = event.target.value;
-    applyFiltersAndRender();
-}
-
-/**
- * Handle category click
- */
-function handleCategoryClick(category) {
-    state.filters.category = category;
-    
-    // Update active state on buttons
-    document.querySelectorAll('.category-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.category === category);
+    ['exportQuoteBtn', 'exportQuoteBtnMobile'].forEach(id => {
+        document.getElementById(id).addEventListener('click', handleExportQuote);
     });
-    
-    applyFiltersAndRender();
+
+    document.querySelector('.modal-close').addEventListener('click', hideProductModal);
+    const modal = document.getElementById('productModal');
+    modal.addEventListener('click', event => {
+        if (event.target === modal) hideProductModal();
+    });
+
+    document.getElementById('quoteFAB').addEventListener('click', openMobileQuotePanel);
+    document.getElementById('closeMobileQuote').addEventListener('click', closeMobileQuotePanel);
+    document.getElementById('quotePanelBackdrop').addEventListener('click', closeMobileQuotePanel);
+    document.addEventListener('keydown', handleDialogKeys);
 }
 
-/**
- * Apply filters and re-render products
- */
+function setCurrencyMenuOpen(open) {
+    const trigger = document.getElementById('currencyTrigger');
+    const menu = document.getElementById('currencyMenu');
+    trigger.setAttribute('aria-expanded', String(open));
+    menu.hidden = !open;
+}
+
+function handleCurrencyMenuKeys(event) {
+    const options = [...document.querySelectorAll('#currencyMenu [data-currency]')];
+    const currentIndex = options.indexOf(document.activeElement);
+    let nextIndex;
+    if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1) % options.length;
+    else if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + options.length) % options.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = options.length - 1;
+    else if (event.key === 'Escape') {
+        event.preventDefault();
+        setCurrencyMenuOpen(false);
+        document.getElementById('currencyTrigger').focus();
+        return;
+    } else return;
+    event.preventDefault();
+    options[nextIndex]?.focus();
+}
+
 function applyFiltersAndRender() {
     state.filteredProducts = applyFilters(state.allProducts, state.filters);
-    
-    renderProducts(
-        state.filteredProducts,
-        state.currentCurrency,
-        state.exchangeRates,
-        handleAddToQuote,
-        handleProductClick
-    );
-    
+    renderProducts(sortProducts(state.filteredProducts, state.sortBy), state.currentCurrency,
+        state.exchangeRates, handleAddToQuote, handleProductClick, state.quoteList);
+    updateCatalogHeading();
     updateProductCount(state.filteredProducts.length, state.allProducts.length);
+    updateMetrics();
+    renderActiveFilters();
 }
 
-/**
- * Handle add to quote
- */
-function handleAddToQuote(product) {
-    const updatedList = addToQuote(product);
-    state.quoteList = updatedList;
-    
-    // Update UI
-    renderQuoteList(
-        state.quoteList,
-        state.currentCurrency,
-        state.exchangeRates,
-        handleRemoveFromQuote
-    );
-    
-    const total = calculateTotal(
-        state.quoteList,
-        state.currentCurrency,
-        state.exchangeRates
-    );
-    updateQuoteTotal(total, state.currentCurrency);
-    updateQuoteBadge(state.quoteList.length);
-    
-    // Update product card buttons
-    updateProductCardButtons(state.quoteList);
-    
-    // Show feedback
-    showNotification(`${product.title} added to quote`);
+function updateMetrics() {
+    const quantity = state.quoteList.reduce((sum, item) => sum + item.quantity, 0);
+    document.getElementById('metricProducts').textContent = String(state.allProducts.length);
+    document.getElementById('metricCategories').textContent = String(extractCategories(state.allProducts).length);
+    document.getElementById('metricQuote').textContent = String(quantity);
+    document.getElementById('metricQuoteValue').textContent =
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: state.currentCurrency })
+            .format(calculateTotal(state.quoteList, state.currentCurrency, state.exchangeRates));
 }
 
-/**
- * Handle remove from quote
- */
-function handleRemoveFromQuote(productId) {
-    const updatedList = removeFromQuote(productId);
-    state.quoteList = updatedList;
-    
-    // Update UI
-    renderQuoteList(
-        state.quoteList,
-        state.currentCurrency,
-        state.exchangeRates,
-        handleRemoveFromQuote
-    );
-    
-    const total = calculateTotal(
-        state.quoteList,
-        state.currentCurrency,
-        state.exchangeRates
-    );
-    updateQuoteTotal(total, state.currentCurrency);
-    updateQuoteBadge(state.quoteList.length);
-    
-    // Update product card buttons
-    updateProductCardButtons(state.quoteList);
+function renderActiveFilters() {
+    const container = document.getElementById('activeFilters');
+    container.replaceChildren();
+    const active = [];
+    if (state.filters.category !== 'all') active.push(['category', formatCategory(state.filters.category)]);
+    if (state.filters.search.trim()) active.push(['search', `Search: ${state.filters.search.trim()}`]);
+    active.forEach(([key, label]) => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'filter-chip';
+        chip.dataset.clearFilter = key;
+        chip.textContent = `${label} ×`;
+        chip.setAttribute('aria-label', `Remove filter: ${label}`);
+        container.append(chip);
+    });
+    document.getElementById('clearFiltersBtn').hidden = active.length === 0;
+    container.hidden = active.length === 0;
 }
 
-/**
- * Handle clear quote
- */
-function handleClearQuote() {
-    if (confirm('Are you sure you want to clear all items from the quote?')) {
-        clearQuote();
-        state.quoteList = [];
-        renderUI();
-        showNotification('Quote cleared');
+function clearFilters() {
+    state.filters = { search: '', category: 'all' };
+    document.getElementById('searchInput').value = '';
+    renderCategoryFilters(extractCategories(state.allProducts), 'all');
+    applyFiltersAndRender();
+}
+
+function updateCatalogHeading() {
+    const title = document.getElementById('catalogTitle');
+    const subtitle = document.querySelector('.toolbar-subtitle');
+    if (state.filters.search.trim()) {
+        title.textContent = 'Search results';
+        subtitle.textContent = `Matches for “${state.filters.search.trim()}”`;
+    } else if (state.filters.category !== 'all') {
+        title.textContent = formatCategory(state.filters.category);
+        subtitle.textContent = 'Products in this category';
+    } else {
+        title.textContent = 'All products';
+        subtitle.textContent = 'Prices shown in your selected currency';
     }
 }
 
-/**
- * Handle export quote
- */
+function handleAddToQuote(product) {
+    state.quoteList = addToQuote(product);
+    updateQuoteUI();
+    showNotification(`${product.title} added to your quote.`);
+}
+
+function handleRemoveFromQuote(productId) {
+    state.quoteList = removeFromQuote(productId);
+    updateQuoteUI();
+}
+
+function handleQuantityChange(productId, quantity, action) {
+    const listId = document.activeElement.closest('.quote-list')?.id;
+    state.quoteList = setQuoteQuantity(productId, quantity);
+    updateQuoteUI();
+    const list = listId ? document.getElementById(listId) : null;
+    const control = list?.querySelector(`[data-product-id="${Number(productId)}"][data-quantity-action="${action}"]`);
+    const fallback = list?.querySelector(`[data-product-id="${Number(productId)}"][data-quantity-action="input"]`);
+    (control?.disabled ? fallback : control)?.focus();
+}
+
+function updateQuoteUI() {
+    renderQuoteList(state.quoteList, state.currentCurrency, state.exchangeRates,
+        handleRemoveFromQuote, handleQuantityChange);
+    updateQuoteTotal(calculateTotal(state.quoteList, state.currentCurrency, state.exchangeRates), state.currentCurrency);
+    updateQuoteBadge(state.quoteList.length);
+    updateProductCardButtons(state.quoteList);
+    updateMetrics();
+}
+
+function handleClearQuote() {
+    if (!state.quoteList.length || !window.confirm('Remove all products from this quote?')) return;
+    clearQuote();
+    state.quoteList = [];
+    renderUI();
+    showNotification('Quote cleared.');
+}
+
 function handleExportQuote() {
     try {
-        const quoteData = exportQuoteData(state.currentCurrency, state.exchangeRates);
-        
-        // Create downloadable file
-        const blob = new Blob([quoteData], { type: 'application/json' });
+        const data = exportQuoteData(state.currentCurrency, state.exchangeRates);
+        const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `quote-${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(link);
+        link.download = `quote-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.append(link);
         link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        showNotification('Quote exported successfully');
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showNotification('Quote downloaded.');
     } catch (error) {
-        console.error('Export error:', error);
-        alert('Failed to export quote. Please try again.');
+        console.error('Error exporting quote:', error);
+        showNotification('Could not export the quote.');
     }
 }
 
-/**
- * Handle product click (show modal)
- */
 function handleProductClick(product) {
-    showProductModal(
-        product,
-        state.currentCurrency,
-        state.exchangeRates,
-        handleAddToQuote
-    );
+    showProductModal(product, state.currentCurrency, state.exchangeRates, handleAddToQuote);
 }
 
-/**
- * Toggle mobile quote panel
- */
-function toggleMobileQuotePanel() {
+function openMobileQuotePanel() {
     const panel = document.getElementById('mobileQuotePanel');
-    panel.classList.toggle('active');
+    panel.hidden = false;
+    panel.classList.add('active');
+    panel.setAttribute('aria-hidden', 'false');
+    panel.setAttribute('aria-modal', 'true');
+    document.getElementById('quoteFAB').setAttribute('aria-expanded', 'true');
+    document.getElementById('quotePanelBackdrop').hidden = false;
+    document.body.classList.add('dialog-open');
+    document.getElementById('closeMobileQuote').focus();
 }
 
-/**
- * Show notification toast
- */
+function closeMobileQuotePanel() {
+    const panel = document.getElementById('mobileQuotePanel');
+    panel.classList.remove('active');
+    panel.hidden = true;
+    panel.setAttribute('aria-hidden', 'true');
+    panel.setAttribute('aria-modal', 'false');
+    document.getElementById('quoteFAB').setAttribute('aria-expanded', 'false');
+    document.getElementById('quotePanelBackdrop').hidden = true;
+    document.body.classList.remove('dialog-open');
+    document.getElementById('quoteFAB').focus();
+}
+
+function handleDialogKeys(event) {
+    const modal = document.getElementById('productModal');
+    const mobilePanel = document.getElementById('mobileQuotePanel');
+    const activeDialog = modal.classList.contains('active') ? modal :
+        (!mobilePanel.hidden ? mobilePanel : null);
+    if (!activeDialog) return;
+
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        if (activeDialog === modal) hideProductModal();
+        else closeMobileQuotePanel();
+        return;
+    }
+
+    if (event.key !== 'Tab') return;
+    const focusable = [...activeDialog.querySelectorAll('button:not([disabled]), a[href], input, select, [tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
+}
+
 function showNotification(message) {
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 2rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #1e293b;
-        color: white;
-        padding: 1rem 2rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        z-index: 1000;
-        animation: slideUp 0.3s ease-out;
-    `;
+    const toast = document.getElementById('toastRegion');
     toast.textContent = message;
-    
-    document.body.appendChild(toast);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        toast.style.animation = 'fadeOut 0.3s ease-out';
-        setTimeout(() => {
-            document.body.removeChild(toast);
-        }, 300);
-    }, 3000);
+    toast.hidden = false;
+    toast.classList.remove('toast-visible');
+    requestAnimationFrame(() => toast.classList.add('toast-visible'));
+    clearTimeout(notificationTimeout);
+    notificationTimeout = window.setTimeout(() => {
+        toast.classList.remove('toast-visible');
+        window.setTimeout(() => { toast.hidden = true; }, 200);
+    }, 2800);
 }
 
-// Add CSS animations for toast
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideUp {
-        from {
-            transform: translate(-50%, 100%);
-            opacity: 0;
-        }
-        to {
-            transform: translate(-50%, 0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes fadeOut {
-        from {
-            opacity: 1;
-        }
-        to {
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-// Initialize app when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', init, { once: true });
 } else {
     init();
 }
-
-// Export for debugging
-window.appState = state;

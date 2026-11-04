@@ -1,237 +1,119 @@
-/**
- * Storage Module
- * Handles localStorage operations for persisting user preferences and quote data
- */
-
 const STORAGE_KEYS = {
     CURRENCY: 'globalInventory_currency',
-    QUOTE_LIST: 'globalInventory_quoteList',
-    LAST_UPDATE: 'globalInventory_lastUpdate'
+    QUOTE_LIST: 'globalInventory_quoteList'
 };
 
-/**
- * Save data to localStorage
- * @param {string} key - Storage key
- * @param {any} value - Value to store
- * @returns {boolean} True if successful, false otherwise
- */
-function saveToStorage(key, value) {
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'MXN'];
+let quoteCache = null;
+let currencyCache = 'USD';
+
+function read(key, fallback) {
     try {
-        const serialized = JSON.stringify(value);
-        localStorage.setItem(key, serialized);
+        const value = localStorage.getItem(key);
+        return value === null ? fallback : JSON.parse(value);
+    } catch (error) {
+        console.warn(`Could not read local storage (${key}).`, error);
+        return fallback;
+    }
+}
+
+function write(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
         return true;
     } catch (error) {
-        console.error('Error saving to localStorage:', error);
+        console.warn(`Could not write local storage (${key}).`, error);
         return false;
     }
 }
 
-/**
- * Load data from localStorage
- * @param {string} key - Storage key
- * @param {any} defaultValue - Default value if key doesn't exist
- * @returns {any} Stored value or default value
- */
-function loadFromStorage(key, defaultValue = null) {
-    try {
-        const serialized = localStorage.getItem(key);
-        
-        if (serialized === null) {
-            return defaultValue;
-        }
-        
-        return JSON.parse(serialized);
-    } catch (error) {
-        console.error('Error loading from localStorage:', error);
-        return defaultValue;
-    }
+function isStoredProduct(product) {
+    return Boolean(
+        product && Number.isInteger(Number(product.id)) &&
+        typeof product.title === 'string' && product.title.trim() &&
+        typeof product.price === 'number' && Number.isFinite(product.price) && product.price >= 0 &&
+        typeof product.category === 'string' && typeof product.image === 'string'
+    );
 }
 
-/**
- * Remove data from localStorage
- * @param {string} key - Storage key
- * @returns {boolean} True if successful, false otherwise
- */
-function removeFromStorage(key) {
-    try {
-        localStorage.removeItem(key);
-        return true;
-    } catch (error) {
-        console.error('Error removing from localStorage:', error);
-        return false;
-    }
-}
-
-/**
- * Clear all app data from localStorage
- * @returns {boolean} True if successful, false otherwise
- */
-export function clearAllStorage() {
-    try {
-        Object.values(STORAGE_KEYS).forEach(key => {
-            localStorage.removeItem(key);
-        });
-        return true;
-    } catch (error) {
-        console.error('Error clearing localStorage:', error);
-        return false;
-    }
-}
-
-/**
- * Save user's preferred currency
- * @param {string} currency - Currency code (USD, EUR, GBP, JPY, MXN)
- * @returns {boolean} True if successful, false otherwise
- */
 export function saveCurrency(currency) {
-    return saveToStorage(STORAGE_KEYS.CURRENCY, currency);
+    if (!SUPPORTED_CURRENCIES.includes(currency)) return false;
+    currencyCache = currency;
+    return write(STORAGE_KEYS.CURRENCY, currency);
 }
 
-/**
- * Load user's preferred currency
- * @returns {string} Currency code or 'USD' as default
- */
 export function loadCurrency() {
-    return loadFromStorage(STORAGE_KEYS.CURRENCY, 'USD');
+    const currency = read(STORAGE_KEYS.CURRENCY, currencyCache);
+    currencyCache = SUPPORTED_CURRENCIES.includes(currency) ? currency : 'USD';
+    return currencyCache;
 }
 
-/**
- * Save quote list
- * @param {Array} quoteList - Array of products in quote
- * @returns {boolean} True if successful, false otherwise
- */
-export function saveQuoteList(quoteList) {
-    const success = saveToStorage(STORAGE_KEYS.QUOTE_LIST, quoteList);
-    
-    if (success) {
-        // Update last modification timestamp
-        saveToStorage(STORAGE_KEYS.LAST_UPDATE, new Date().toISOString());
-    }
-    
-    return success;
-}
-
-/**
- * Load quote list
- * @returns {Array} Array of products in quote or empty array
- */
 export function loadQuoteList() {
-    return loadFromStorage(STORAGE_KEYS.QUOTE_LIST, []);
+    const quote = read(STORAGE_KEYS.QUOTE_LIST, quoteCache || []);
+    if (!Array.isArray(quote)) return quoteCache || [];
+    quoteCache = quote.filter(isStoredProduct).map(item => ({
+        ...item,
+        quantity: Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 999
+            ? item.quantity : 1
+    }));
+    return quoteCache;
 }
 
-/**
- * Add product to quote list
- * @param {Object} product - Product to add
- * @returns {Array} Updated quote list
- */
+function saveQuoteList(quote) {
+    quoteCache = quote;
+    return write(STORAGE_KEYS.QUOTE_LIST, quote);
+}
+
 export function addToQuote(product) {
-    const quoteList = loadQuoteList();
-    
-    // Check if product already exists
-    const exists = quoteList.some(item => item.id === product.id);
-    
-    if (!exists) {
-        quoteList.push(product);
-        saveQuoteList(quoteList);
+    const quote = loadQuoteList();
+    if (isStoredProduct(product) && !quote.some(item => Number(item.id) === Number(product.id))) {
+        quote.push({ ...product, quantity: 1 });
+        saveQuoteList(quote);
     }
-    
-    return quoteList;
+    return quote;
 }
 
-/**
- * Remove product from quote list
- * @param {number} productId - ID of product to remove
- * @returns {Array} Updated quote list
- */
+export function setQuoteQuantity(productId, quantity) {
+    const parsed = Number(quantity);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 999) return loadQuoteList();
+    const quote = loadQuoteList().map(item => Number(item.id) === Number(productId)
+        ? { ...item, quantity: parsed } : item);
+    saveQuoteList(quote);
+    return quote;
+}
+
 export function removeFromQuote(productId) {
-    const quoteList = loadQuoteList();
-    const updatedList = quoteList.filter(item => item.id !== productId);
-    
-    saveQuoteList(updatedList);
-    
-    return updatedList;
+    const quote = loadQuoteList().filter(item => Number(item.id) !== Number(productId));
+    saveQuoteList(quote);
+    return quote;
 }
 
-/**
- * Clear all items from quote list
- * @returns {boolean} True if successful, false otherwise
- */
 export function clearQuote() {
     return saveQuoteList([]);
 }
 
-/**
- * Check if product is in quote
- * @param {number} productId - ID of product to check
- * @returns {boolean} True if in quote, false otherwise
- */
 export function isInQuote(productId) {
-    const quoteList = loadQuoteList();
-    return quoteList.some(item => item.id === productId);
+    return loadQuoteList().some(item => Number(item.id) === Number(productId));
 }
 
-/**
- * Get quote item count
- * @returns {number} Number of items in quote
- */
-export function getQuoteCount() {
-    const quoteList = loadQuoteList();
-    return quoteList.length;
-}
-
-/**
- * Get last update timestamp
- * @returns {string|null} ISO timestamp or null
- */
-export function getLastUpdate() {
-    return loadFromStorage(STORAGE_KEYS.LAST_UPDATE);
-}
-
-/**
- * Check if localStorage is available
- * @returns {boolean} True if available, false otherwise
- */
-export function isStorageAvailable() {
-    try {
-        const test = '__storage_test__';
-        localStorage.setItem(test, test);
-        localStorage.removeItem(test);
-        return true;
-    } catch (error) {
-        return false;
-    }
-}
-
-/**
- * Get storage usage information
- * @returns {Object} Object with storage stats
- */
-export function getStorageInfo() {
-    const info = {
-        available: isStorageAvailable(),
-        currency: loadCurrency(),
-        quoteCount: getQuoteCount(),
-        lastUpdate: getLastUpdate()
-    };
-    
-    return info;
-}
-
-/**
- * Export quote data as JSON string
- * @param {string} currency - Current currency
- * @param {Object} exchangeRates - Exchange rates
- * @returns {string} JSON string of quote data
- */
 export function exportQuoteData(currency, exchangeRates) {
-    const quoteList = loadQuoteList();
-    
-    const exportData = {
-        currency: currency,
+    const rate = Number.isFinite(exchangeRates?.[currency]) && exchangeRates[currency] > 0
+        ? exchangeRates[currency]
+        : 1;
+    const fractionDigits = currency === 'JPY' ? 0 : 2;
+    const roundMoney = amount => Number(amount.toFixed(fractionDigits));
+    const items = loadQuoteList().map(item => ({
+        ...item,
+        convertedPrice: roundMoney(item.price * rate),
+        convertedSubtotal: roundMoney(item.price * rate * item.quantity)
+    }));
+
+    return JSON.stringify({
+        currency,
+        sourceCurrency: 'USD',
         timestamp: new Date().toISOString(),
-        items: quoteList,
-        exchangeRate: exchangeRates[currency] || 1
-    };
-    
-    return JSON.stringify(exportData, null, 2);
+        exchangeRate: rate,
+        items,
+        total: roundMoney(items.reduce((sum, item) => sum + item.convertedSubtotal, 0))
+    }, null, 2);
 }
